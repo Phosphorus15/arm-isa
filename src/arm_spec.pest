@@ -1,0 +1,118 @@
+//
+// arm_spec
+// Author: Phosphorus15
+//
+
+char = {
+    !("'" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+string_content = @{char*}
+
+string_literal = @{ "'" ~ string_content ~ "'" }
+
+number = @{ "-"? ~ (ASCII_DIGIT)+ }
+
+ident = @{ (ASCII_ALPHA) ~ (ASCII_ALPHANUMERIC | "_")* }
+
+constant_val = { number | string_literal }
+
+binop = @{ "+" | "-" | "==" | ">" | "<" | ":" }
+
+ident_list = { ident ~ ("," ~ ident) }
+
+typename = { ("bits(" ~ right_value ~ ")") | ident }
+
+var_decl = { typename ~ ident }
+
+var_decl_assign = { typename ~ ident ~ "=" ~ right_value }
+
+var_assign = { ref_value ~ "=" ~ right_value }
+
+member_access = {ident ~ "." ~ ref_value}
+
+member_bits_access = {ident ~ "." ~ "<" ~ ident_list ~ ">"}
+
+indices_access = {ident ~ "[" ~ right_value? ~ "]"}
+
+// here got a parsing bug, the `:` case never takes
+bits_access = {ident ~ "<" ~ ((right_value ~ ":" ~ right_value) | right_value) ~ ">"}
+
+ref_value_drop = { "-" }
+
+left_tuple = {"(" ~ (ref_value_drop | ref_value) ~ ("," ~ (ref_value_drop | ref_value)) ~ ")"}
+
+ref_value = { member_access |
+               indices_access |
+               bits_access |
+               left_tuple |
+               ident }
+
+value_list = { right_value? ~ ("," ~ right_value)* }
+
+// so here we got unit tuple
+right_tuple = { "(" ~ value_list ~ ")" }
+
+function_call = { ident ~ "(" ~ value_list ~ ")"}
+
+member_access_right = {ident ~ "." ~ bin_op_left}
+
+if_else_value = {"if" ~ right_value ~ "then" ~ right_value ~ "else" ~ right_value}
+
+right_bin_op = { bin_op_left ~ binop ~ right_value }
+
+bin_op_left = { right_tuple |
+                indices_access |
+                bits_access |
+                member_access_right |
+                function_call |
+                constant_val |
+                ident }
+
+right_value = { if_else_value |
+                right_bin_op |
+                bin_op_left }
+
+undefined = { "UNDEFINED" }
+
+single_expr = !{ undefined |
+                !("bits") ~ function_call |
+                var_decl_assign |
+                var_decl |
+                var_assign }
+
+indented_block = { PUSH(whitespace_ex) ~ base_expr ~ (LINE_SEPARATOR ~ PEEK ~ base_expr)* ~ DROP }
+
+single_or_block = @{ LINE_SEPARATOR ~ indented_block |
+                     single_expr ~ whitespace_ex? ~ ";" }
+
+if_else_expr = {"if" ~ right_value ~ if_trailing ~ else_expr? }
+
+if_trailing = @{"then" ~ whitespace_ex? ~ single_or_block }
+
+else_expr = @{ "else" ~ whitespace_ex? ~ single_or_block }
+
+case_expr = { "case" ~ right_value ~ case_trailing_expr }
+
+case_trailing_expr = @{ "of" ~ whitespace_ex? ~ case_trailing }
+
+case_trailing = @{ LINE_SEPARATOR ~ PUSH(whitespace_ex)
+                        ~ case_when ~ (LINE_SEPARATOR ~ PEEK ~ case_when)* ~ DROP}
+
+case_when = @{ when_expr ~ whitespace_ex? ~ single_or_block }
+
+when_expr = { "when" ~ (constant_val | ident) }
+
+base_expr = { (single_expr ~ ";") |
+              if_else_expr |
+              when_expr }
+
+arm_spec = { SOI ~ base_expr* ~ EOI }
+
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
+
+whitespace_ex = _{ (" " | "\t")+ }
+
+COMMENT = _{ "//" ~ (!"\n" ~ ANY)* }
