@@ -355,6 +355,7 @@ pub fn walk_single_expr(node: Pair<Rule>) -> ASTNode {
 
 pub fn walk_single_or_block(node: Pair<Rule>) -> ASTNode {
     println!("{:?}", node);
+    let node = inner_last!(node);
     match node.as_rule() {
         Rule::single_expr => walk_single_expr(node),
         Rule::indented_block => ASTNode::Multiple(

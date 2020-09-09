@@ -83,29 +83,29 @@ single_expr = !{ undefined |
                 var_decl |
                 var_assign }
 
-indented_block = { PUSH(whitespace_ex) ~ base_expr ~ (LINE_SEPARATOR ~ PEEK ~ base_expr)* ~ DROP }
+indented_block = ${ PUSH(whitespace_ex) ~ base_expr ~ (NEWLINE ~ PEEK ~ base_expr)* ~ DROP }
 
-single_or_block = @{ LINE_SEPARATOR ~ indented_block |
+single_or_block = ${ NEWLINE ~ indented_block |
                      single_expr ~ whitespace_ex? ~ ";" }
 
-if_else_expr = {"if" ~ right_value ~ if_trailing ~ else_expr? }
+if_else_expr = !{"if" ~ right_value ~ if_trailing ~ else_expr? }
 
 if_trailing = @{"then" ~ whitespace_ex? ~ single_or_block }
 
 else_expr = @{ "else" ~ whitespace_ex? ~ single_or_block }
 
-case_expr = { "case" ~ right_value ~ case_trailing_expr }
+case_expr = !{ "case" ~ right_value ~ case_trailing_expr }
 
 case_trailing_expr = @{ "of" ~ whitespace_ex? ~ case_trailing }
 
-case_trailing = @{ LINE_SEPARATOR ~ PUSH(whitespace_ex)
-                        ~ case_when ~ (LINE_SEPARATOR ~ PEEK ~ case_when)* ~ DROP}
+case_trailing = @{ NEWLINE ~ PUSH(whitespace_ex)
+                        ~ case_when ~ (NEWLINE ~ PEEK ~ case_when)* ~ DROP}
 
 case_when = @{ when_expr ~ whitespace_ex? ~ single_or_block }
 
-when_expr = { "when" ~ (constant_val | ident) }
+when_expr = !{ "when" ~ (constant_val | ident) }
 
-base_expr = { (single_expr ~ ";") |
+base_expr = @{ (single_expr ~ ";") |
               if_else_expr |
               when_expr }
 

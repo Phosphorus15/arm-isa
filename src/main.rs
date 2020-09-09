@@ -22,7 +22,10 @@ use crate::instr::load_instructions;
 fn main() {
     parse::parse_operation(
         "if msbit == 63 then
-u();"
+ u();
+ a();
+else
+ e();"
     )
 }
 
