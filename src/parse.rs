@@ -46,8 +46,9 @@ pub enum TyName {
 pub enum LeftPattern {
     Ident(String),
     Tuple(Vec<Either<LeftPattern, ()>>),
-    IndexAccess(String, Value),
+    IndexAccess(String, Vec<ASTValue>),
     BitsAccess(String, Either<Value, (Value, Value)>),
+    MemberBitsAccess(String, Vec<String>),
     MemberAccess(String, Box<LeftPattern>),
 }
 
@@ -66,8 +67,8 @@ pub enum ASTValue {
         hold: Value,
         otherwise: Value,
     },
-    IndexAccess(String, Value),
-    BitsAccess(String, Either<Value, (Value, Value)>),
+    IndexAccess(String, Vec<ASTValue>),
+    BitsAccess(Value, Either<Value, (Value, Value)>),
     MemberAccess(String, Value),
     FuncCall(String, Vec<ASTValue>),
     Ident(String),
@@ -137,22 +138,22 @@ pub fn walk_bin_op_left(body: RuleList) -> ASTValue {
         }
         Rule::indices_access => {
             let comp = get_inner!(left_op);
-            ASTValue::IndexAccess(comp[0].as_str().to_string()
-                                  , Box::new(walk_value_expr(get_rule!(comp, 1))))
+            ASTValue::IndexAccess(comp[0].as_str().to_string(),
+                                  load_value_list(get_rule!(comp, 1)))
         }
-        Rule::bits_access => {
+        Rule::right_bits_access => {
             let comp = get_inner!(left_op);
-            let id = comp[0].as_str().to_string();
+            let id = walk_bin_op_left(get_rule!(comp, 0));
             let index = walk_bit_accessor(comp);
             ASTValue::BitsAccess(
-                id,
+                id.boxed(),
                 index,
             )
         }
         Rule::member_access_right => {
             let comp = get_inner!(left_op);
             let id = comp[0].as_str().to_string();
-            ASTValue::MemberAccess(id, walk_value_expr(get_rule!(comp, 1)).boxed())
+            ASTValue::MemberAccess(id, walk_value_expr(vec![comp[1].clone()]).boxed())
         }
         Rule::function_call => {
             let comp = get_inner!(left_op);
@@ -192,6 +193,7 @@ fn walk_const_or_ident(body: RuleList) -> Either<Either<i64, String>, String> {
 
 fn walk_value_expr(body: RuleList) -> ASTValue {
     let mut priority = HashMap::<&str, (i32, bool)>::new();
+    priority.insert(".", (3, true));
     priority.insert("<", (5, true));
     priority.insert("<=", (5, true));
     priority.insert("==", (5, true));
@@ -272,10 +274,15 @@ pub fn walk_left_pattern(node: Pair<Rule>) -> LeftPattern {
             LeftPattern::MemberAccess(comp[0].as_str().to_string()
                                       , Box::new(walk_left_pattern(comp[1].clone())))
         }
+        Rule::member_bits_access => {
+            let comp = get_inner!(inner);
+            LeftPattern::MemberBitsAccess(comp[0].as_str().to_string(),
+                comp[1].clone().into_inner().map(|it| it.as_str().to_string()).collect())
+        }
         Rule::indices_access => {
             let comp = get_inner!(inner);
-            LeftPattern::IndexAccess(comp[0].as_str().to_string()
-                                     , Box::new(walk_value_expr(get_rule!(comp, 1))))
+            LeftPattern::IndexAccess(comp[0].as_str().to_string(),
+                                     load_value_list(get_rule!(comp, 1)))
         }
         Rule::bits_access => {
             let comp = get_inner!(inner);

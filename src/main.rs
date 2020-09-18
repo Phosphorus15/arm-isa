@@ -12,6 +12,9 @@ extern crate pest_derive;
 mod parse;
 mod bitvec;
 mod instr;
+mod env;
+mod bap_sema;
+mod resolve;
 
 pub use crate::parse::*;
 
@@ -21,11 +24,13 @@ use crate::instr::load_instructions;
 
 fn main() {
     parse::parse_operation(
-        "if msbit == 63 then
- u();
- a();
-else
- e();"
+        "bits(datasize) result;
+bits(datasize) operand1 = X[n];
+bits(datasize) operand2 = X[m];
+bits(4) nzcv;
+(result, nzcv) = AddWithCarry(operand1, operand2, PSTATE.C);
+PSTATE.<N,Z,C,V> = nzcv;
+X[d] = result;"
     )
 }
 

@@ -19,9 +19,9 @@ ident = @{ (ASCII_ALPHA) ~ (ASCII_ALPHANUMERIC | "_")* }
 
 constant_val = { number | string_literal }
 
-binop = @{ "+" | "-" | "==" | ">" | "<" | ":" }
+binop = @{ "+" | "-" | "==" | ">" | "<" | ":" | "." }
 
-ident_list = { ident ~ ("," ~ ident) }
+ident_list = { ident ~ ("," ~ ident)* }
 
 typename = { ("bits(" ~ right_value ~ ")") | ident }
 
@@ -33,9 +33,9 @@ var_assign = { ref_value ~ "=" ~ right_value }
 
 member_access = {ident ~ "." ~ ref_value}
 
-member_bits_access = {ident ~ "." ~ "<" ~ ident_list ~ ">"}
+member_bits_access = {ident ~ ".<" ~ ident_list ~ ">"}
 
-indices_access = {ident ~ "[" ~ right_value? ~ "]"}
+indices_access = {ident ~ "[" ~ value_list ~ "]"}
 
 // here got a parsing bug, the `:` case never takes
 bits_access = {ident ~ "<" ~ ((right_value ~ ":" ~ right_value) | right_value) ~ ">"}
@@ -44,7 +44,8 @@ ref_value_drop = { "-" }
 
 left_tuple = {"(" ~ (ref_value_drop | ref_value) ~ ("," ~ (ref_value_drop | ref_value)) ~ ")"}
 
-ref_value = { member_access |
+ref_value = { member_bits_access |
+               member_access |
                indices_access |
                bits_access |
                left_tuple |
@@ -63,10 +64,12 @@ if_else_value = {"if" ~ right_value ~ "then" ~ right_value ~ "else" ~ right_valu
 
 right_bin_op = { bin_op_left ~ binop ~ right_value }
 
-bin_op_left = { right_tuple |
+right_bits_access = { bin_op_left_mask ~ "<" ~ ((right_value ~ ":" ~ right_value) | right_value) ~ ">" }
+
+bin_op_left = { right_bits_access | bin_op_left_mask }
+
+bin_op_left_mask = _{ right_tuple |
                 indices_access |
-                bits_access |
-                member_access_right |
                 function_call |
                 constant_val |
                 ident }
