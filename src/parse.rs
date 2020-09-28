@@ -8,7 +8,7 @@ use std::borrow::Borrow;
 use rayon::iter::Either;
 use std::collections::HashMap;
 use crate::ASTValue::{Unit, BinOp, IfElse};
-use crate::ASTNode::{Multiple, VarDecl, VarAssign, Nope, LocalFuncCall, CaseWhen};
+use crate::ASTNode::{Multiple, VarDecl, VarAssign, Nope, LocalFuncCall, CaseWhen, Return};
 use crate::TyName::{NameBind, Bits, Bit, Int};
 use crate::LeftPattern::Ident;
 
@@ -90,6 +90,7 @@ pub enum ASTNode {
     VarAssign(LeftPattern, Value),
     LocalFuncCall(String, Vec<ASTValue>),
     // Just like FuncCall
+    Return(Value),
     IfElse {
         cond: Value,
         hold: Box<ASTNode>,
@@ -102,12 +103,12 @@ pub enum ASTNode {
     Nope, // do nothing
 }
 
-pub fn parse_operation(sema: &str) {
+pub fn parse_operation(sema: &str) -> ASTNode {
     let tree = SpecParser::parse(
         Rule::arm_spec,
         sema,
     ).unwrap_or_else(|e| panic!("{}", e)).collect::<RuleList>();
-    walk_pairs(tree[0].clone().into_inner());
+    ASTNode::Multiple(walk_pairs(tree[0].clone().into_inner()))
 }
 
 pub fn walk_pairs(pairs: pest::iterators::Pairs<Rule>) -> Vec<ASTNode> {
@@ -277,7 +278,7 @@ pub fn walk_left_pattern(node: Pair<Rule>) -> LeftPattern {
         Rule::member_bits_access => {
             let comp = get_inner!(inner);
             LeftPattern::MemberBitsAccess(comp[0].as_str().to_string(),
-                comp[1].clone().into_inner().map(|it| it.as_str().to_string()).collect())
+                                          comp[1].clone().into_inner().map(|it| it.as_str().to_string()).collect())
         }
         Rule::indices_access => {
             let comp = get_inner!(inner);
@@ -355,6 +356,13 @@ pub fn walk_single_expr(node: Pair<Rule>) -> ASTNode {
             let composition = get_inner!(inner);
             LocalFuncCall(composition[0].as_str().to_string(),
                           load_value_list(get_rule!(composition, 1)))
+        }
+        Rule::return_expr => {
+            let composition = get_inner!(inner);
+            let ret_val = if composition.len() == 1 {
+                walk_value_expr(get_rule!(composition, 0))
+            } else { Unit };
+            Return(ret_val.boxed())
         }
         _ => Nope,
     }

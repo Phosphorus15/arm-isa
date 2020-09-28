@@ -15,23 +15,29 @@ mod instr;
 mod env;
 mod bap_sema;
 mod resolve;
+mod gen;
 
 pub use crate::parse::*;
 
 use crate::pest::Parser;
 use crate::bitvec::BitVec;
 use crate::instr::load_instructions;
+use crate::env::{DefEnv, Env};
+use std::rc::Rc;
 
 fn main() {
-    parse::parse_operation(
+    let ast = parse::parse_operation(
         "bits(datasize) result;
 bits(datasize) operand1 = X[n];
 bits(datasize) operand2 = X[m];
 bits(4) nzcv;
-(result, nzcv) = AddWithCarry(operand1, operand2, PSTATE.C);
+result = AddWithCarry(operand1, operand2, PSTATE.C);
 PSTATE.<N,Z,C,V> = nzcv;
 X[d] = result;"
-    )
+    );
+    let resolved = dbg!(resolve::lift_ast(ast));
+    let gen = gen::generate_insn(&DefEnv::from(Rc::new(Env {})), resolved);
+    dbg!(gen);
 }
 
 fn extract_main() {

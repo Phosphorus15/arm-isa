@@ -10,12 +10,12 @@
 use crate::resolve::TypeUnresolved;
 use std::rc::Rc;
 
-struct Env {
+pub struct Env {
 
 }
 
 // local environment for instruction
-struct DefEnv {
+pub struct DefEnv {
     base: Rc<Env>
 }
 
@@ -27,21 +27,21 @@ impl From<Rc<Env>> for DefEnv {
     }
 }
 
-struct GlobalVar {
+pub struct GlobalVar {
     id: String,
     ty: TypeUnresolved,
 }
 
-struct GlobalFunc {
+pub struct GlobalFunc {
     id: String,
 }
 
 // which are always parameters
-struct LocalVal {
+pub struct LocalVal {
     id: String,
     ty: TypeUnresolved,
 }
 
-struct GlobalEnum {
+pub struct GlobalEnum {
     variants: Vec<String>
 }

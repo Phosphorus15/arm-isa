@@ -15,7 +15,9 @@ string_literal = @{ "'" ~ string_content ~ "'" }
 
 number = @{ "-"? ~ (ASCII_DIGIT)+ }
 
-ident = @{ (ASCII_ALPHA) ~ (ASCII_ALPHANUMERIC | "_")* }
+ident_single = _{ (ASCII_ALPHA) ~ (ASCII_ALPHANUMERIC | "_")* }
+
+ident = @{ ident_single ~ ("." ~ ident_single)* }
 
 constant_val = { number | string_literal }
 
@@ -80,7 +82,10 @@ right_value = { if_else_value |
 
 undefined = { "UNDEFINED" }
 
+return_expr = { "return" ~ right_value? }
+
 single_expr = !{ undefined |
+                return_expr |
                 !("bits") ~ function_call |
                 var_decl_assign |
                 var_decl |
